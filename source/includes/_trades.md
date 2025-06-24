@@ -113,7 +113,6 @@ This endpoint retrieves past trades on the exchange split up by order. This is a
 | pageSize      | false    | number   | Requested page size. Each call will only return up to this amount of records. Default is 100.                   |
 | paginationKey | false    | string   | Used for pagination. Pass the `nextKey` returned from the previous request to retrieve the next set of records. |
 | tradeStatus   | false    | string   | Filter trades to see only those with `SUCCESS` or `FAILED` status'                                              |
-
 ### Response format
 
 | Name       | Type    | Description                                                                       |
@@ -126,23 +125,126 @@ This endpoint retrieves past trades on the exchange split up by order. This is a
 
 A `Trade` object has the following format
 
-| Name              | Type    | Description                                                                                                                          |
-| ----------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| baseToken         | string  | The token in which this trade was placed                                                                                             |
-| bettor            | string  | The address of the bettor who placed the trade                                                                                       |
-| stake             | string  | Exact token amount that was staked for the bet. To convert into a readable token amount, see [the token conversion section](#tokens) |
-| odds              | string  | Implied odds that the bettor received for this bet. Divide by 10^20 to get the odds in decimal format.                               |
-| orderHash         | string  | The unique identifier of the order that was filled for this trade                                                                    |
-| marketHash        | string  | The unique identifier of the market for which this trade was placed                                                                  |
-| maker             | boolean | `true` if the bettor is market maker in this trade                                                                                   |
-| betTime           | number  | The time in UNIX seconds when the trade was placed                                                                                   |
-| settled           | boolean | `true` if this bet is settled (this refers to if the bet was won lost or voided, not if the trade succeeded or not)                  |
-| bettingOutcomeOne | boolean | `true` if the bettor is betting outcome one in the market                                                                            |
-| fillHash          | string  | The unique identifier for this trade                                                                                                 |
-| tradeStatus       | string  | `SUCCESS` or `FAILED` depending on if this trade succeeded or not                                                                    |
-| valid             | boolean | `true` if the trade counts toward competitions or tournaments                                                                        |
-| outcome           | number  | with `settled=true`, this will be 0, 1, or 2 depending on the final outcome of the market                                            |
-| settleDate        | string  | ISO formatted date string of when the trade was settled                                                                              |
+| Name                     | Type    | Description                                                                                                                          |
+| ------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| baseToken                | string  | The token in which this trade was placed                                                                                             |
+| bettor                   | string  | The address of the bettor who placed the trade                                                                                       |
+| stake                    | string  | Exact token amount that was staked for the bet. To convert into a readable token amount, see [the token conversion section](#tokens) |
+| normalizedStake	         | string  | The `stake` value in the correct decimal format for the `baseToken`                                                                  |
+| odds                     | string  | Implied odds that the bettor received for this bet. Divide by 10^20 to get the odds in decimal format.                               |
+| orderHash                | string  | The unique identifier of the order that was filled for this trade                                                                    |
+| marketHash               | string  | The unique identifier of the market for which this trade was placed                                                                  |
+| maker                    | boolean | `true` if the bettor is market maker in this trade                                                                                   |
+| betTime                  | number  | The time in UNIX seconds when the trade was placed                                                                                   |
+| settled                  | boolean | `true` if this bet is settled (this refers to if the bet was won lost or voided, not if the trade succeeded or not)                  |
+| bettingOutcomeOne        | boolean | `true` if the bettor is betting outcome one in the market                                                                            |
+| fillHash                 | string  | The unique identifier for this trade                                                                                                 |
+| tradeStatus              | string  | `SUCCESS` or `FAILED` depending on if this trade succeeded or not                                                                    |
+| valid                    | boolean | `true` if the trade counts toward competitions or tournaments                                                                        |
+| outcome                  | number  | with `settled=true`, this will be 0, 1, or 2 depending on the final outcome of the market                                            |
+| settleDate               | string  | ISO formatted date string of when the trade was settled                                                                              |
+| chainVersion             | string  | `SXN` or `SXR`. See [migration docs](#sx-rollup-migration-guide).                                                                    |
+| sportXeventId            | string  | The event related to this trade                                                                                                      |
+| netReturn                | string  | The net return amount in the `baseToken` value                                                                                       |
+| settleNetReturnValue     | string  | The net return amount in USD (at the time of settlement)                                                                             |
+
+
+## Get trades by orderHash
+
+```shell
+curl --location --request GET 'https://api.sx.bet/trades/orders'
+```
+
+> The above command returns JSON structured like this:
+
+```json
+{
+  "status": "success",
+  "data": {
+    "trades": [
+      {
+        "baseToken": "0x6629Ce1Cf35Cc1329ebB4F63202F3f197b3F050B",
+        "tradeStatus": "SUCCESS",
+        "bettor": "0x5B3498Cb20C3107B5B267fabd3601B6425BDeb42",
+        "stake": "907458563",
+        "odds": "54750000000000000000",
+        "orderHash": "0xb338c7d03b09d6cefdf2cd7e79f72ea601cfd0fa10c35b351c7a59d5c8125675",
+        "marketHash": "0x526e24b9eca9bcbd51e4a19135a998e6a8d8fff06bd6668bfb8f35528837a1c2",
+        "maker": true,
+        "betTime": "2025-04-24T06:39:37.078Z",
+        "betType": 0,
+        "betTimeValue": 907.458563,
+        "settled": true,
+        "settleValue": 1,
+        "bettingOutcomeOne": false,
+        "fillHash": "0xb6b15fe7d4d337ff0ae0e2a233203385e619c5e1edf23f04135efbf12128def8",
+        "affiliate": "0x0000000000000000000000000000000000000000",
+        "valid": true,
+        "providerEventId": "15468276",
+        "settleDate": "2025-04-24T17:38:24.885Z",
+        "outcome": 2,
+        "contractsVersion": "6.0",
+        "settleTxHash": "0x0b33bf455a90469bdbc30ebea3a9930fe1f1525c03895c45c8e4feb98d6ac365",
+        "fillOrderHash": "0xe6f4410a4fbd649e8fc72d764056fbd01c27d8b9d2749bd2cf78f2a161dde963",
+        "chainVersion": "SXR",
+        "sportXeventId": "L15468276",
+        "netReturn": "1657.458563",
+        "settleNetReturnValue": "1657.458563",
+        "normalizedStake": "907.458563"
+      },
+      {
+        "baseToken": "0x6629Ce1Cf35Cc1329ebB4F63202F3f197b3F050B",
+        "tradeStatus": "SUCCESS",
+        "bettor": "0xA3C9202458BBE5EBa0b962835487d817f3955d01",
+        "stake": "750000000",
+        "odds": "45250000000000000000",
+        "orderHash": "0xb338c7d03b09d6cefdf2cd7e79f72ea601cfd0fa10c35b351c7a59d5c8125675",
+        "marketHash": "0x526e24b9eca9bcbd51e4a19135a998e6a8d8fff06bd6668bfb8f35528837a1c2",
+        "maker": false,
+        "betTime": "2025-04-24T06:39:37.078Z",
+        "betType": 1,
+        "betTimeValue": 750,
+        "settled": true,
+        "settleValue": 1,
+        "bettingOutcomeOne": true,
+        "fillHash": "0xb6b15fe7d4d337ff0ae0e2a233203385e619c5e1edf23f04135efbf12128def8",
+        "affiliate": "0x0000000000000000000000000000000000000000",
+        "valid": true,
+        "providerEventId": "15468276",
+        "settleDate": "2025-04-24T17:38:24.885Z",
+        "outcome": 2,
+        "contractsVersion": "6.0",
+        "settleTxHash": "0x0b33bf455a90469bdbc30ebea3a9930fe1f1525c03895c45c8e4feb98d6ac365",
+        "fillOrderHash": "0xe6f4410a4fbd649e8fc72d764056fbd01c27d8b9d2749bd2cf78f2a161dde963",
+        "chainVersion": "SXR",
+        "sportXeventId": "L15468276",
+        "netReturn": "1657.458564",
+        "settleNetReturnValue": "0",
+        "normalizedStake": "750.0"
+      }
+    ]
+  }
+}
+```
+
+This endpoint retrieves trades on the exchange for the given orderHashes.
+
+### HTTP Request
+
+`GET https://api.sx.bet/trades/orders`
+
+### Query parameters
+
+| Name            | Required | Type       | Description                                                                                                     |
+| --------------- | -------- | ---------- | --------------------------------------------------------------------------------------------------------------- |
+| orderHashes     | true     | string[]   | The unique identifiers of the orders being searched                                                             |
+### Response format
+
+| Name       | Type    | Description                                                                       |
+| ---------- | ------- | --------------------------------------------------------------------------------- |
+| status     | string  | `success` or `failure` if the request succeeded or not                            |
+| data       | object  | The response data                                                                 |
+| > trades   | Trade[] | The trades for the request                                                        |
 
 ## Get consolidated trades
 
@@ -169,7 +271,7 @@ curl --location --request GET 'https://api.sx.bet/trades/consolidated'
         "fillHash": "0xc44e72f94e70ede9742c6b8aeb77e743e0cbf753ff3eae8bd4f1ab98b9260f0e",
         "gameLabel": "Australia vs New Zealand",
         "bettingOutcomeLabel": "Australia",
-        "sportXeventId": "L6350002",
+        "sportXEventId": "L6350002",
         "bettingOutcome": 1,
         "gameTime": "2021-01-06T23:30:00.000Z",
         "leagueLabel": "International Test",
@@ -188,7 +290,7 @@ curl --location --request GET 'https://api.sx.bet/trades/consolidated'
         "fillHash": "0xc44e72f94e70ede9742c6b8aeb77e743e0cbf753ff3eae8bd4f1ab98b9260f0e",
         "gameLabel": "Australia vs New Zealand",
         "bettingOutcomeLabel": "Australia",
-        "sportXeventId": "L6350002",
+        "sportXEventId": "L6350002",
         "bettingOutcome": 1,
         "gameTime": "2021-01-06T23:30:00.000Z",
         "leagueLabel": "International Test",
@@ -218,7 +320,7 @@ This endpoint retrieves past consolidated trades on the exchange via pagination.
 | sortBy        | true     | string  | Which field to sort by (see response for field names)              |
 | sortAsc       | true     | boolean | If `true`, sorts in ascending order                                |
 | maker         | false    | boolean | If `true`, only gets trades where the bettor was a market maker    |
-| sportXeventId | false    | string  | Only gets trades for this event ID                                 |
+| sportXEventId | false    | string  | Only gets trades for this event ID                                 |
 | tradeStatus   | false    | string  | Filter trades to see only those with `SUCCESS` or `FAILED` status' |
 
 ### Response format
@@ -245,8 +347,10 @@ A `ConsolidatedTrade` object has the following format
 | fillHash            | string  | The unique identifier for this trade                                                                                                        |
 | gameLabel           | string  | A general label for the market                                                                                                              |
 | bettingOutcomeLabel | string  | Which team/side the bettor bet                                                                                                              |
-| sportXeventId       | string  | The unique fixture ID for this trade                                                                                                        |
+| sportXEventId       | string  | The unique fixture ID for this trade                                                                                                        |
 | bettingOutcome      | number  | `1` if the bettor is betting outcome one, `2` otherwise                                                                                     |
 | gameTime            | string  | ISO formatted date string of when the game is suppossed to occur                                                                            |
 | leagueLabel         | string  | The name of this league                                                                                                                     |
 | outcome             | number  | With `settled=true`, this will be 0, 1, or 2 depending on the final outcome of the market                                                   |
+| chainVersion        | string  | `SXN` or `SXR`. See [migration docs](#sx-rollup-migration-guide).                                                                           |
+| sportXeventId       | string  | The event related to this trade                                                                                                             |

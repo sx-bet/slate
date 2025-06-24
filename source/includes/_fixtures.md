@@ -107,7 +107,7 @@ This endpoint returns the status of the passed event IDs.
 
 | Name           | Required | Type     | Description                             |
 | -------------- | -------- | -------- | --------------------------------------- |
-| sportXeventIds | true     | string[] | An array of event IDs (comma separated) |
+| sportXEventIds | true     | string[] | An array of event IDs (comma separated) |
 
 ### Response format
 
