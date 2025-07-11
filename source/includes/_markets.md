@@ -23,7 +23,7 @@ curl --location --request GET 'https://api.sx.bet/markets/active?onlyMainLine=tr
         "teamTwoName": "Carlos Alcaraz",
         "type": 226,
         "gameTime": 1622735700,
-        "sportXeventId": "L7032829",
+        "sportXEventId": "L7032829",
         "liveEnabled": true,
         "sportLabel": "Tennis",
         "sportId": 6,
@@ -43,7 +43,7 @@ curl --location --request GET 'https://api.sx.bet/markets/active?onlyMainLine=tr
         "type": 2,
         "gameTime": 1622735700,
         "line": 36.5,
-        "sportXeventId": "L7032829",
+        "sportXEventId": "L7032829",
         "liveEnabled": true,
         "sportLabel": "Tennis",
         "sportId": 6,
@@ -64,7 +64,7 @@ curl --location --request GET 'https://api.sx.bet/markets/active?onlyMainLine=tr
         "type": 3,
         "gameTime": 1622735700,
         "line": 1.5,
-        "sportXeventId": "L7032829",
+        "sportXEventId": "L7032829",
         "liveEnabled": true,
         "sportLabel": "Tennis",
         "sportId": 6,
@@ -91,12 +91,12 @@ This endpoint retrieves active markets on the exchange. It does not return marke
 | Name          | Required | Type     | Description                                                                                                      |
 | ------------- | -------- | -------- | ---------------------------------------------------------------------------------------------------------------- |
 | onlyMainLine  | false    | boolean  | If set to true, the result will only include main lines on spread and over under markets                         |
-| eventId       | false    | string   | If set, it will only include markets for a particular sportXeventId                                              |
+| eventId       | false    | string   | If set, it will only include markets for a particular sportXEventId                                              |
 | leagueId      | false    | number   | If set, it will only include markets for a particular league ID                                                  |
 | sportIds      | false    | number[] | If set, it will only include markets for particular sport IDs (comma separated)                                  |
 | liveOnly      | false    | boolean  | If set, it will only include markets that are currently available for in-play betting                            |
 | betGroup      | false    | string   | If set, it will only include markets for a particular bet group                                                  |
-| type          | false    | number   | If set, it will only include markets for a particular market type. See below for the options                     |
+| type          | false    | number[] | If set, it will only include markets for those particular market types. See below for the options                |
 | paginationKey | false    | string   | Used for pagination. Pass the `nextKey` returned from the previous request to retrieve the next set of records.  |
 | pageSize      | false    | number   | Used for pagination. Requested page size. Each call will only return up to this amount of records. Maximum of 50 |
 
@@ -127,7 +127,7 @@ A `market` object looks like this
 | type            | MarketType | The type of the market                                                                                                              |
 | gameTime        | number     | The UNIX timestamp of the game                                                                                                      |
 | line            | number?    | The line of the market. Only applicable to markets with a line                                                                      |
-| sportXeventId   | string     | The unique event ID for this market                                                                                                 |
+| sportXEventId   | string     | The unique event ID for this market                                                                                                 |
 | liveEnabled     | boolean    | Whether or not this match is available for live betting                                                                             |
 | sportLabel      | string     | The name of the sport for this market                                                                                               |
 | sportId         | number     | The ID of the sport for this market                                                                                                 |
@@ -207,7 +207,7 @@ curl --location --request GET 'https://api.sx.bet/markets/find'
       "outcome": 2,
       "teamOneScore": 0,
       "teamTwoScore": 0,
-      "sportXeventId": "L6247212",
+      "sportXEventId": "L6247212",
       "liveEnabled": false,
       "sportLabel": "Soccer",
       "sportId": 5,
@@ -230,7 +230,7 @@ This endpoint retrieves specific markets
 
 | Name         | Required | Type     | Description                                                                |
 | ------------ | -------- | -------- | -------------------------------------------------------------------------- |
-| marketHashes | true     | string[] | The market hashes of the markets to retrieve. Maximum 30. Comma separated. |
+| marketHashes | true     | string[] | The market hashes of the markets to retrieve. Comma separated. **Maximum 30.** |
 
 ### Response format
 
@@ -247,6 +247,12 @@ See [active markets section](#get-active-markets) for how the `Market` object is
 | outcome      | number | The outcome of the market. Can be one of 0 1 or 2. 0 means the market was voided and stakes were returned to bettors. 1 means the outcome labeled `outcomeOneName` was the outcome. 2 means the outcome labeled `outcomeTwoName` was the outcome. |
 | teamOneScore | number | Final score of team one                                                                                                                                                                                                                           |
 | teamTwoScore | number | Final score of team two                                                                                                                                                                                                                           |
+
+### Error Responses
+
+| Error Code        | Description                                                   |
+| ----------------- | ------------------------------------------------------------- |
+| BAD_MARKET_HASHES | Invalid `marketHashes` or more than 30 `marketHashes` queried |
 
 ## Popular markets
 
@@ -270,7 +276,7 @@ curl --location --request GET 'https://api.sx.bet/markets/popular'
       "teamTwoName": "Rafael da Silva Alves",
       "type": 226,
       "gameTime": 1621724400,
-      "sportXeventId": "L6896568",
+      "sportXEventId": "L6896568",
       "liveEnabled": false,
       "sportLabel": "Mixed Martial Arts",
       "sportId": 7,
@@ -290,7 +296,7 @@ curl --location --request GET 'https://api.sx.bet/markets/popular'
       "type": 3,
       "gameTime": 1621782000,
       "line": -0.5,
-      "sportXeventId": "L6973172",
+      "sportXEventId": "L6973172",
       "liveEnabled": false,
       "sportLabel": "Soccer",
       "sportId": 5,
