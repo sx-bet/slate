@@ -1,9 +1,11 @@
 # API Key
 
-In order to use the SX.Bet API, you do NOT need an API Key. The standard API user can perform all the requests provided in this document. There is a baseline rate limiter applied to all requests with or without an API Key. The API Key will give you elevated privilages on certain functions.
+This key is currently required to access the WebSocket through Ably, for realtime updates. Otherwise, in order to use the SX.Bet API, you do NOT need an API Key. The standard API user can perform all the requests provided in this document. There is a baseline rate limiter applied to all requests, regardless of API key.
+
+The API Key will 
 
 <aside class="notice">
-The main usecase for the API Key is to connect to the WebSocket via Ably.
+You must obtain an API Key in order to connect to the WebSocket via Ably.
 </aside>
 
 ## Generating API Key

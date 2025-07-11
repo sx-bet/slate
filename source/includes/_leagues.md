@@ -209,9 +209,9 @@ Note that this endpoint is only updated every 10m.
 
 ### Query parameters
 
-| Name    | Required | Type   | Description                                 |
-| ------- | -------- | ------ | ------------------------------------------- |
-| sportId | true     | number | Only return active leagues under this sport |
+| Name         | Required | Type   | Description                                                                                                                                 |
+| ------------ | -------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| sportId      | true     | number | Only return active leagues under this sport                                                                                                 |
 
 ### Response format
 

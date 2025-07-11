@@ -72,7 +72,7 @@ curl --location --request GET 'https://api.sx.bet/live-scores'
       "teamOneScore": 1,
       "teamTwoScore": 2,
       "updatedAt": "2021-07-08T20:35:21.607Z",
-      "sportXeventId": "L7187811"
+      "sportXEventId": "L7187811"
     }
   ]
 }
@@ -113,7 +113,7 @@ A `Score` object has the following format
 | sportId       | number   | The ID of the sport for this match                                              |
 | teamOneScore  | number   | The current score for team one                                                  |
 | teamTwoScore  | number   | The current score for team two                                                  |
-| sportXeventId | string   | The event ID for this match                                                     |
+| sportXEventId | string   | The event ID for this match                                                     |
 
 A `Period` object has the following format
 

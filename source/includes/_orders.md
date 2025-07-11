@@ -72,14 +72,29 @@ This endpoint returns active orders on the exchange based on a few parameters
 
 ### Query parameters
 
+<aside class="notice">
+Parameters marked with an '*' are coming soon in future release.
+</aside>
+
 | Name          | Required | Type     | Description                                               |
 | ------------- | -------- | -------- | --------------------------------------------------------- |
 | marketHashes  | false    | string[] | Only get orders for these market hashes. Comma separated. |
 | baseToken     | false    | string   | Only get orders denominated in this base token            |
 | maker         | false    | string   | Only get orders for this market maker                     |
 | sportXeventId | false    | string   | Only get orders for this event ID                         |
+| orderHashes*   | false    | string[] | Only get orders for these order hashes. Comma separated. |
+| page*   | false    | integer | Which page to query for paginated queries, min 0 |
+| perPage*   | false    | integer | How many per page for paginated queries, max 1000 |
+| sortBy*   | false    | string | Which field to sort by, possible values: ["fill_amount", "total_bet_size", "percentage_odds", "api_expiry", "created_at", "updated_at"], default: "created_at" |
+| sortAsc*   | false    | boolean | Sort direction, default: true |
 
-Note that one of `marketHashes` or `maker` is required.
+<aside class="notice">
+One of `marketHashes` or `maker` is required.
+</aside>
+
+<aside class="notice">
+Only one of `marketHashes` and `sportXEventId` can be present.
+</aside>
 
 ### Response format
 
@@ -98,16 +113,94 @@ Note that one of `marketHashes` or `maker` is required.
 | salt                     | string  | A random number to differentiate identical orders                                                                                                                                                                                                                                                                                              |
 | isMakerBettingOutcomeOne | boolean | `true` if the maker is betting outcome one (and hence taker is betting outcome two if filled)                                                                                                                                                                                                                                                  |
 | signature                | string  | Signature of the maker on this order                                                                                                                                                                                                                                                                                                           |
+| sportXeventId            | string  | The event related to this order                                                                                                                                                                                                                                                                                                                |
+
+### Error Responses
+
+| Error Code                              | Description                                            |
+| --------------------------------------- | ------------------------------------------------------ |
+| RATE_LIMIT_ORDER_REQUEST_MARKET_COUNT   | More than 1000 `marketHashes` queried                  |
+| BOTH_SPORTXEVENTID_MARKETHASHES_PRESENT | Can only send one of `marketHashes` or `sportXEventId` |
 
 <aside class="notice">
 Note that <code>totalBetSize</code> and <code>fillAmount</code> are from *the perspective of the market maker*. <code>totalBetSize</code> can be thought of as the maximum amount of tokens the maker will be putting into the pot if the order was fully filled. <code>fillAmount</code> can be thought of as how many tokens the maker has already put into the pot. To compute how much space there is left from the taker's perspective, you can use the formula <code>remainingTakerSpace = (totalBetSize - fillAmount) * 10^20 / percentageOdds - (totalBetSize - fillAmount)</code>
 </aside>
 
-## Enabling betting
+## Get best odds
 
 ```shell
-See the javascript section.
+curl --location --request GET 'https://api.sx.bet/orders/odds/best'
 ```
+
+> The above command returns JSON structured like this
+
+```json
+{
+  "status": "success",
+  "data": {
+      "bestOdds": [
+        {
+          "marketHash": "0xddaf2ef56d0db2317cf9a1e1dde3de2f2158e28bee55fe35a684389f4dce0cf6",
+          "baseToken": "0x1BC6326EA6aF2aB8E4b6Bc83418044B1923b2956",
+          "outcomeOne": {
+            "percentageOdds": "57750000000000000000",
+            "updatedAt": 1747408399544
+          },
+          "outcomeTwo": {
+            "percentageOdds": "34000000000000000000",
+            "updatedAt": 1747408399544
+          }
+        },
+        {
+          "marketHash": "0x7aa1477c99725a75f24d7e521bd02f247c4ca7319e0d4ad4a8350eb170b2eeae",
+          "baseToken": "0x1BC6326EA6aF2aB8E4b6Bc83418044B1923b2956",
+          "outcomeOne": {
+            "percentageOdds": "9250000000000000000",
+            "updatedAt": 1747414402993
+          },
+          "outcomeTwo": {
+            "percentageOdds": "82500000000000000000",
+            "updatedAt": 1747414402993
+          }
+        }
+      ]
+  }
+}
+```
+
+This endpoint returns the best available odds for the specified baseToken and marketHashes or leagueIds.
+
+### HTTP Request
+
+`GET https://api.sx.bet/orders/odds/best`
+
+### Query parameters
+
+| Name          | Required | Type     | Description                                               |
+| ------------- | -------- | -------- | --------------------------------------------------------- |
+| marketHashes  | true    | string[] | Only get best odds for these market hashes. Comma separated. |
+| leagueIds  | true    | string[] | Only get best odds for these league ids. Comma separated. |
+| baseToken     | true    | string   | Only get best odds denominated in this base token.            |
+
+
+<aside class="notice">
+One of `marketHashes` or `leagueIds` is required.
+</aside>
+
+<aside class="notice">
+Only one of `marketHashes` and `leagueIds` can be present.
+</aside>
+
+### Response format
+
+| Name                     | Type    | Description                                                                                                                                                                                                                                                                                                                                    |
+| ------------------------ | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| marketHash               | string  | The resulting market for the given best odds query                                                                                                                                                                                                                                                                                                         |
+| baseToken                    | string  | The baseToken for the given best odds query                                                                                                                                                                                                                                                                                                                |
+| outcomeOne             | object  | An object representing outcome one, including the best available percentage odds as `percentageOdds` (string) and the last update time as `updatedAt` (numerical timestamp in milliseconds)                                                                                                                                                                                                     |
+| outcomeTwo             | object  | An object representing outcome two, including the best available percentage odds as `percentageOdds` (string) and the last update time as `updatedAt` (numerical timestamp in milliseconds)                                                                                                                                                                                                     |
+
+## Enabling betting
 
 ```javascript
 import { MaxUint256 } from "ethers/constants";
@@ -117,7 +210,7 @@ import { JsonRpcProvider } from "ethers/providers";
 const walletAddress = process.env.WALLET_ADDRESS;
 const tokenAddress = process.env.TOKEN_ADDRESS;
 const tokenTransferProxyAddress = process.env.TOKEN_TRANSFER_PROXY_ADDRESS;
-const provider = new providers.JsonRpcProvider(`https://rpc.sx.technology`);
+const provider = new providers.JsonRpcProvider(process.env.RPC_URL); // find this under the 'references' section
 const wallet = new Wallet(process.env.PRIVATE_KEY).connect(provider);
 const tokenContract = new Contract(
   tokenAddress,
@@ -142,11 +235,11 @@ await tokenContract.approve(tokenTransferProxyAddress, MaxUInt256, {
 });
 ```
 
-To enable betting, you need to approve the `TokenTransferProxy` contract for each token for which you wish to trade. Otherwise, any endpoints that create/cancel or fill orders will fail. For example if you want to trade with both ETH and USDC, you'll need to approve the contract twice, once for each token. The address of the `TokenTransferProxy` is available at `https://api.sx.bet/metadata` and the address of each token is given in [the tokens section](#tokens)
+To enable betting (filling or posting orders), you need to approve the `TokenTransferProxy` contract for each token for which you wish to trade. Otherwise, any endpoints that create/cancel or fill orders will fail. For example if you want to trade with both ETH and USDC, you'll need to approve the contract twice, once for each token. The address of the `TokenTransferProxy` is available at `https://api.sx.bet/metadata` and the address of each token is given in [the tokens section](#tokens)
 
 If you don't wish to do this programmatically, you can simply go to `https://sx.bet`, make a test bet with the account and token you'll be using, and you will be good to go.
 
-If you want to do it programmatically, see the code sample on the right. Note you will need a little bit of MATIC to make this transaction (~$0.01 worth).
+If you want to do it programmatically, see the code sample on the right. Note you will need a tiny bit of SX to make this transaction.
 
 <aside class="notice">
 Your assets must be on SX Network to place or fill orders via the API.
@@ -291,7 +384,7 @@ export function roundDownOddsToNearestStep(
 }
 ```
 
-This endpoint offers new orders on the exchange (market making). Offering orders does not cost any fee or require you to have any MATIC tokens in your wallet.
+This endpoint offers new orders on the exchange (market making). Offering orders does not cost any fee.
 
 Note you can offer as many orders as you wish, provided your total exposure for each token (as measured by `totalBetSize - fillAmount`) remains under your wallet balance. If your wallet balance dips under your total exposure, orders will be removed from the book until it reaches the minimum again.
 
@@ -355,6 +448,14 @@ The address in the <code>maker</code> field must match the account being used to
 Note that <code>totalBetSize</code> is from *the perspective of the market maker*. <code>totalBetSize</code> can be thought of as the maximum amount of tokens the maker (you) will be putting into the pot if the order was fully filled. This is the maximum amount you will risk.
 </aside>
 
+### Error Responses
+
+| Error Code                        | Description                                                        |
+| --------------------------------- | ------------------------------------------------------------------ |
+| TOO_MANY_DIFFERENT_MARKETS        | More than 3 different markets queried                              |
+| ORDERS_MUST_HAVE_IDENTICAL_MARKET | All orders must be for the same network, either `SXN` or `SXR`     |
+| BAD_BASE_TOKEN                    | All orders must be for the same base token, either `USDC` or `WSX` |
+
 ## Cancel individual orders
 
 ```shell
@@ -372,7 +473,7 @@ curl --location --request POST 'https://api.sx.bet/orders/cancel/v2' \
 ```
 
 ```javascript
-import ethSigUtil from "eth-sig-util";
+import { signTypedData, SignTypedDataVersion } from "@metamask/eth-sig-util";
 import { randomBytes } from "@ethersproject/random";
 
 // Example is shown using a private key
@@ -414,8 +515,10 @@ function getCancelOrderEIP712Payload(orderHashes, salt, timestamp, chainId) {
 
 const payload = getCancelOrderEIP712Payload(orderHashes, salt, timestamp, chainId);
 
-const signature = ethSigUtil.signTypedData_v4(bufferPrivateKey, {
+const signature = signTypedData({
+  privateKey: bufferPrivateKey, 
   data: payload,
+  version: SignTypedDataVersion.V4,
 });
 
 const apiPayload = {
@@ -439,16 +542,23 @@ const result = await fetch("https://api.sx.bet/orders/cancel/v2", {
 {
   "status": "success",
   "data": {
-    "cancelledCount": 1
+    "cancelledCount": 1,
+    "orders": [
+      {
+        "orderHash": "0xc4fad4101eac3d72a7d4166df05534edd5479ec705307624498d6ec60336ef45",
+        "pendingFills": [
+          {
+              "fillHash": "0xf691c9dfb100d125503c0b4dad944f15d711eaf22108c6dacc5077a274b35821",
+              "pendingFillAmount": "106995918"
+          }
+        ]
+      }
+    ]
   }
 }
 ```
 
 This endpoint cancels existing orders on the exchange that you placed as a market maker. If passed orders that do not exist, they simply fail silently while the others will succeed.
-
-<aside class="notice">
-Ensure you use the <code>chainId</code> of SX Network, not the <code>chainId</code> of ETH mainnet or Polygon.
-</aside>
 
 ### HTTP Request
 
@@ -466,11 +576,32 @@ Ensure you use the <code>chainId</code> of SX Network, not the <code>chainId</co
 
 ### Response format
 
-| Name             | Type     | Description                                            |
-| ---------------- | -------- | ------------------------------------------------------ |
-| status           | string   | `success` or `failure` if the request succeeded or not |
-| data             | object   | The response data                                      |
-| > cancelledCount | string[] | How many orders were cancelled, of the orders passed   |
+| Name             | Type             | Description                                                        |
+| ---------------- | ---------------- | ------------------------------------------------------------------ |
+| status           | string           | `success` or `failure` if the request succeeded or not             |
+| data             | object           | The response data                                                  |
+| > cancelledCount | number           | How many orders were cancelled, of the orders passed               |
+| > orders?        | CancelledOrder[] | An array of Cancelled Order objects. Omitted if cancel count is 0. |
+
+A `CancelledOrder` object looks like this
+
+| Name             | Type           | Description                                                                          |
+| -------------| -------------- | ------------------------------------------------------------------------------------ |
+| orderHash    | string         | Cancelled order hash                                                                 |
+| pendingFills | PendingFill[]  | The pending fills awaiting confirmation on chain. Expected to succeed and fill order.|
+
+A `PendingFill` object looks like this
+
+| Name              | Type   | Description                                                   |
+| ----------------- | ------ | ------------------------------------------------------------- |
+| fillHash          | string | The fill hash which is pending                                |
+| pendingFillAmount | string | The amount of the order that this fill is attempting to fill. |
+
+### Error Responses
+
+| Error Code                       | Description                            |
+| -------------------------------- | -------------------------------------- |
+| CANCEL_REQUEST_ALREADY_PROCESSED | This cancellation is already processed |
 
 ## Cancel event orders
 
@@ -478,7 +609,7 @@ Ensure you use the <code>chainId</code> of SX Network, not the <code>chainId</co
 curl --location --request POST 'https://api.sx.bet/orders/cancel/event' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-    "sportXeventId": "L1234123",
+    "sportXEventId": "L1234123",
     "signature": "0x1763cb98a069657cb778fdc295eac48741b957bfe58e54f7f9ad03c6c1ca3d053d9ca2e6957af794991217752b69cb9aa4ac9330395c92e24c8c25ec19220e5a1b",
     "salt": "0x6845028402f518a1c90770554a71017cd434ae9f2c09aa56c9560835c1929650",
     "maker": "0xe087299AE9Acd0133d6D1544A97Bb0EEe24a2671",
@@ -487,7 +618,7 @@ curl --location --request POST 'https://api.sx.bet/orders/cancel/event' \
 ```
 
 ```javascript
-import ethSigUtil from "eth-sig-util";
+import { signTypedData, SignTypedDataVersion } from "@metamask/eth-sig-util";
 import { randomBytes } from "@ethersproject/random";
 import { Wallet } from "@ethersproject/wallet";
 
@@ -501,7 +632,7 @@ const timestamp = Math.floor(new Date().getTime() / 1000);
 const wallet = new Wallet(privateKey);
 
 function getCancelOrderEventsEIP712Payload(
-  sportXeventId,
+  sportXEventId,
   salt,
   timestamp,
   chainId
@@ -526,7 +657,7 @@ function getCancelOrderEventsEIP712Payload(
       chainId,
       salt,
     },
-    message: { sportXeventId, timestamp },
+    message: { sportXEventId, timestamp },
   };
   return payload;
 }
@@ -538,8 +669,10 @@ const payload = getCancelOrderEventsEIP712Payload(
   chainId
 );
 
-const signature = ethSigUtil.signTypedData_v4(bufferPrivateKey, {
+const signature = signTypedData({
+  privateKey: bufferPrivateKey,
   data: payload,
+  version: SignTypedDataVersion.V4,
 });
 
 const apiPayload = {
@@ -550,7 +683,7 @@ const apiPayload = {
   timestamp,
 };
 
-const result = await fetch("https://api.sx.bet/orders/cancel/v2", {
+const result = await fetch("https://api.sx.bet/orders/cancel/event", {
   method: "POST",
   body: JSON.stringify(apiPayload),
   headers: { "Content-Type": "application/json" },
@@ -563,16 +696,23 @@ const result = await fetch("https://api.sx.bet/orders/cancel/v2", {
 {
   "status": "success",
   "data": {
-    "cancelledCount": 1
+    "cancelledCount": 1,
+    "orders": [
+      {
+        "orderHash": "0xc4fad4101eac3d72a7d4166df05534edd5479ec705307624498d6ec60336ef45",
+        "pendingFills": [
+          {
+              "fillHash": "0xf691c9dfb100d125503c0b4dad944f15d711eaf22108c6dacc5077a274b35821",
+              "pendingFillAmount": "106995918"
+          }
+        ]
+      }
+    ]
   }
 }
 ```
 
 This endpoint cancels existing orders on the exchange for a particular event that you placed as a market maker.
-
-<aside class="notice">
-Ensure you use the <code>chainId</code> of SX Network, not the <code>chainId</code> of ETH mainnet or Polygon. 
-</aside>
 
 ### HTTP Request
 
@@ -590,11 +730,32 @@ Ensure you use the <code>chainId</code> of SX Network, not the <code>chainId</co
 
 ### Response format
 
-| Name             | Type     | Description                                            |
-| ---------------- | -------- | ------------------------------------------------------ |
-| status           | string   | `success` or `failure` if the request succeeded or not |
-| data             | object   | The response data                                      |
-| > cancelledCount | string[] | How many orders were cancelled, of the orders passed   |
+| Name             | Type             | Description                                                        |
+| ---------------- | ---------------- | ------------------------------------------------------------------ |
+| status           | string           | `success` or `failure` if the request succeeded or not             |
+| data             | object           | The response data                                                  |
+| > cancelledCount | number           | How many orders were cancelled, of the orders passed               |
+| > orders?        | CancelledOrder[] | An array of Cancelled Order objects. Omitted if cancel count is 0. |
+
+A `CancelledOrder` object looks like this
+
+| Name             | Type           | Description                                                                          |
+| -------------| -------------- | ------------------------------------------------------------------------------------ |
+| orderHash    | string         | Cancelled order hash                                                                 |
+| pendingFills | PendingFill[]  | The pending fills awaiting confirmation on chain. Expected to succeed and fill order.|
+
+A `PendingFill` object looks like this
+
+| Name              | Type   | Description                                                   |
+| ----------------- | ------ | ------------------------------------------------------------- |
+| fillHash          | string | The fill hash which is pending                                |
+| pendingFillAmount | string | The amount of the order that this fill is attempting to fill. |
+
+### Error Responses
+
+| Error Code                       | Description                            |
+| -------------------------------- | -------------------------------------- |
+| CANCEL_REQUEST_ALREADY_PROCESSED | This cancellation is already processed |
 
 ## Cancel all orders
 
@@ -610,7 +771,7 @@ curl --location --request POST 'https://api.sx.bet/orders/cancel/all' \
 ```
 
 ```javascript
-import ethSigUtil from "eth-sig-util";
+import { signTypedData, SignTypedDataVersion } from "@metamask/eth-sig-util";
 import { randomBytes } from "@ethersproject/random";
 import { Wallet } from "@ethersproject/wallet";
 
@@ -647,13 +808,14 @@ function getCancelAllOrdersEIP712Payload(salt, timestamp, chainId) {
 
 const payload = getCancelOrderEventsEIP712Payload(salt, timestamp, chainId);
 
-const signature = ethSigUtil.signTypedData_v4(bufferPrivateKey, {
+const signature = signTypedData({
+  privateKey: bufferPrivateKey,
   data: payload,
+  version: SignTypedDataVersion.V4,
 });
 
 const apiPayload = {
   signature,
-  sportXeventId,
   salt,
   maker: wallet.address,
   timestamp,
@@ -672,16 +834,23 @@ const result = await fetch("https://api.sx.bet/orders/cancel/all", {
 {
   "status": "success",
   "data": {
-    "cancelledCount": 10
+    "cancelledCount": 1,
+    "orders": [
+      {
+        "orderHash": "0xc4fad4101eac3d72a7d4166df05534edd5479ec705307624498d6ec60336ef45",
+        "pendingFills": [
+          {
+              "fillHash": "0xf691c9dfb100d125503c0b4dad944f15d711eaf22108c6dacc5077a274b35821",
+              "pendingFillAmount": "106995918"
+          }
+        ]
+      }
+    ]
   }
 }
 ```
 
 This endpoint cancels ALL existing orders on the exchange that you placed as a market maker.
-
-<aside class="notice">
-Ensure you use the <code>chainId</code> of SX Network, not the <code>chainId</code> of ETH mainnet or Polygon.
-</aside>
 
 ### HTTP Request
 
@@ -698,13 +867,38 @@ Ensure you use the <code>chainId</code> of SX Network, not the <code>chainId</co
 
 ### Response format
 
-| Name             | Type     | Description                                            |
-| ---------------- | -------- | ------------------------------------------------------ |
-| status           | string   | `success` or `failure` if the request succeeded or not |
-| data             | object   | The response data                                      |
-| > cancelledCount | string[] | How many orders were cancelled, of the orders passed   |
+| Name             | Type             | Description                                                        |
+| ---------------- | ---------------- | ------------------------------------------------------------------ |
+| status           | string           | `success` or `failure` if the request succeeded or not             |
+| data             | object           | The response data                                                  |
+| > cancelledCount | number           | How many orders were cancelled, of the orders passed               |
+| > orders?        | CancelledOrder[] | An array of Cancelled Order objects. Omitted if cancel count is 0. |
 
-## Filling orders
+A `CancelledOrder` object looks like this
+
+| Name             | Type           | Description                                                                          |
+| -------------| -------------- | ------------------------------------------------------------------------------------ |
+| orderHash    | string         | Cancelled order hash                                                                 |
+| pendingFills | PendingFill[]  | The pending fills awaiting confirmation on chain. Expected to succeed and fill order.|
+
+A `PendingFill` object looks like this
+
+| Name              | Type   | Description                                                   |
+| ----------------- | ------ | ------------------------------------------------------------- |
+| fillHash          | string | The fill hash which is pending                                |
+| pendingFillAmount | string | The amount of the order that this fill is attempting to fill. |
+
+### Error Responses
+
+| Error Code                       | Description                            |
+| -------------------------------- | -------------------------------------- |
+| CANCEL_REQUEST_ALREADY_PROCESSED | This cancellation is already processed |
+
+## Filling orders v1
+
+<aside class="notice">
+Deprecating soon! See <a href="#filling-orders-v2">Filling orders v2</a> for improved fill endpoint.
+</aside>
 
 ```shell
 curl --location --request POST 'https://api.sx.bet/orders/fill' \
@@ -713,7 +907,7 @@ curl --location --request POST 'https://api.sx.bet/orders/fill' \
 ```
 
 ```javascript
-import ethSigUtil from "eth-sig-util";
+import { signTypedData, SignTypedDataVersion } from "@metamask/eth-sig-util";
 import {
   BigNumber,
   constants,
@@ -723,6 +917,7 @@ import {
   Wallet,
 } from "ethers";
 import { randomBytes } from "ethers/lib/utils";
+import dayjs from "dayjs";
 
 async function fillOrder() {
   const privateKey = process.env.PRIVATE_KEY;
@@ -732,12 +927,12 @@ async function fillOrder() {
   // get the following from https://api.sx.bet/metadata
   const tokenTransferProxyAddress = process.env.TOKEN_TRANSFER_PROXY_ADDRESS;
   const EIP712FillHasherAddress = process.env.EIP712_FILL_HASHER_ADDRESS;
-  const chainId = process.env.CHAIN_ID; // 416 in production
+  const chainId = process.env.CHAIN_ID; // 4162 in production
   const domainVersion = process.env.DOMAIN_VERSION;
 
   const bufferPrivateKey = Buffer.from(privateKey!.substring(2), "hex");
   const wallet = new Wallet(privateKey).connect(
-    new providers.JsonRpcProvider(process.env.PROVIDER_URL)
+    new providers.JsonRpcProvider(process.env.RPC_URL) // find this under the 'references' section
   );
   const takerAmounts = ["10000000000000000000", "10000000000000000000"];
   const fillSalt = BigNumber.from(randomBytes(32)).toString();
@@ -755,25 +950,6 @@ async function fillOrder() {
         outputs: [{ internalType: "bool", name: "", type: "bool" }],
         payable: false,
         stateMutability: "nonpayable",
-        type: "function",
-      },
-      {
-        inputs: [
-          {
-            internalType: "address",
-            name: "user",
-            type: "address",
-          },
-        ],
-        name: "getNonce",
-        outputs: [
-          {
-            internalType: "uint256",
-            name: "nonce",
-            type: "uint256",
-          },
-        ],
-        stateMutability: "view",
         type: "function",
       },
       {
@@ -814,12 +990,8 @@ async function fillOrder() {
     wallet
   );
 
-  let nonce: BigNumber = await tokenContract.getNonce(takerAddress);
+  let nonce: BigNumber = await tokenContract.nonces(takerAddress);
   const tokenName: string = await tokenContract.name();
-  const abiEncodedFunctionSig = tokenContract.interface.encodeFunctionData(
-    "approve",
-    [tokenTransferProxyAddress, approvalAmount]
-  );
 
   const ordersToFill = [
     {
@@ -886,7 +1058,9 @@ async function fillOrder() {
         { name: "makerSigs", type: "bytes[]" },
         { name: "takerAmounts", type: "uint256[]" },
         { name: "fillSalt", type: "uint256" },
-        { name: "beneficiary", type: "address" }
+        { name: "beneficiary", type: "address" },
+        { name: "beneficiaryType", type: "uint8" },
+        { name: "cashOutTarget", type: "bytes32" },
       ],
       Order: [
         { name: "marketHash", type: "bytes32" },
@@ -929,7 +1103,9 @@ async function fillOrder() {
         })),
         takerAmounts,
         fillSalt,
-        beneficiary: constants.AddressZero
+        beneficiary: constants.AddressZero,
+        beneficiaryType: 0,
+        cashOutTarget: constants.HashZero,
       },
     },
   };
@@ -939,35 +1115,43 @@ async function fillOrder() {
       EIP712Domain: [
         { name: "name", type: "string" },
         { name: "version", type: "string" },
+        { name: "chainId", type: "uint256" },
         { name: "verifyingContract", type: "address" },
-        { name: "salt", type: "bytes32" },
       ],
-      MetaTransaction: [
+      Permit: [
+        { name: "owner", type: "address" },
+        { name: "spender", type: "address" },
+        { name: "value", type: "uint256" },
         { name: "nonce", type: "uint256" },
-        { name: "from", type: "address" },
-        { name: "functionSignature", type: "bytes" },
+        { name: "deadline", type: "uint256" },
       ],
     },
     domain: {
       name: tokenName,
       version: "1",
-      salt: utils.hexZeroPad(utils.hexlify(chainId), 32),
+      chainId: chainId,
       verifyingContract: tokenAddress,
     },
     message: {
+      owner: takerAddress,
+      spender: tokenTransferProxyAddress,
+      value: approvalAmount,
       nonce: nonce.toNumber(),
-      from: takerAddress,
-      functionSignature: abiEncodedFunctionSig,
+      deadline: dayjs().add(2, "hour").unix(),
     },
-    primaryType: "MetaTransaction",
+    primaryType: "Permit",
   };
 
-  const approveProxySignature = ethSigUtil.signTypedData_v4(bufferPrivateKey, {
+  const approveProxySignature = signTypedData({
+    privateKey: bufferPrivateKey,
     data: approveProxySigningPayload,
+    version: SignTypedDataVersion.V4,
   });
 
-  const signature = ethSigUtil.signTypedData_v4(bufferPrivateKey, {
+  const signature = signTypedData({
+    privateKey: bufferPrivateKey,
     data: signingPayload,
+    version: SignTypedDataVersion.V4,
   });
 
   const apiPayload = {
@@ -1010,18 +1194,32 @@ async function fillOrder() {
 }
 ```
 
-This endpoint fills orders on the exchange. Multiple orders can be filled at once and no gas is paid as this is a meta transaction submitted by the API itself. _Therefore you do not require any MATIC in your wallet to fill orders_.
+This endpoint fills orders on the exchange. Multiple orders can be filled at once and no gas is paid as this is a meta transaction submitted by the API itself.
 
-Note that pre-game has a built-in betting delay of 5s and in-game betting has a built-in betting delay of 8s. This is added to guard against toxic flow and high spikes in latency from the bookmaker's side. It is effectively protection for the bookmaker. If the odds change within that delay time, the order will be cancelled and an error will be thrown.
+Note that there are built in betting delays based on the below chart. This is added to guard against toxic flow and high spikes in latency from the bookmaker's side. It is effectively protection for the bookmaker. If the odds change within that delay time, the order will be cancelled and an error will be thrown.
+
+**PREGAME**
+
+| Sport                | Delay ( in seconds ) |
+| -------------------- | -------------------- |
+| Default (all sports) | 0.5                  |
+
+**LIVE**
+
+| Sport               | Delay ( in seconds ) |
+| ------------------- | -------------------- |
+| Baseball            | 12                   |
+| Football            | 10                   |
+| Tennis              | 10                   |
+| Soccer              | 10                   |
+| Basketball          | 8                    |
+| Hockey              | 8                    |
+| Default (all other) | 8                    |
 
 To fill orders on sx.bet via the API, make sure you first enable betting by following the steps [here](#enabling-betting)
 
 <aside class="notice">
 Your assets must be on SX Network to place bets.
-</aside>
-
-<aside class="notice">
-Ensure you use the <code>chainId</code> of SX Network, not the <code>chainId</code> of ETH mainnet or Polygon.
 </aside>
 
 ### HTTP Request
@@ -1044,7 +1242,6 @@ Ensure you use the <code>chainId</code> of SX Network, not the <code>chainId</co
 | takerAmounts        | true     | string[]                | How much each order is being filled, ordered by index. Must be in the same order as `orderHashes`, and the same length as `orderHashes`. It also must be the same and in the same order as the `takerAmounts` array used when computing the EIP712 payload. |
 | takerSig            | true     | string                  | The EIP712 signature of the `taker` on the payload. See the example of how to compute this.                                                                                                                                                                 |
 | message             | true     | string                  | A user-facing message for the eip712 signing. Can be anything.                                                                                                                                                                                              |
-| signature           | true     | string                  | The EIP712 signature on the cancel order payload. See the [EIP712 signing section](#eip712-signing) for general information on how to compute this signature. See the example for the specific parameters required.                                         |
 | approveProxyPayload | false    | `ApproveSpenderPayload` | Extra object required if you wish to atomically `ERC20.approve()` prior to the bet. This can be useful from a UX point of view if you don't want the user to have to wait until the approval is mined before the bet can be submitted                       |
 | affiliateAddress    | false    | string                  | Set the `taker` to a valid affiliate's address.                                                                                                                                                                                                             |
 
@@ -1064,12 +1261,430 @@ where an `ApproveSpenderPayload` looks like
 | ---------- | ------ | ------------------------------------------------------ |
 | status     | string | `success` or `failure` if the request succeeded or not |
 | data       | object | The response data                                      |
-| > fillHash | string | A unique identifier for this fill.                     |
+| fillHash | string | A unique identifier for this fill.                     |
 
 <aside class="warning">
-Note that <code>fillAmounts</code> are from *the perspective of the market maker*. <code>fillAmounts</code> can be thought of as how many tokens the maker(s) will be putting into the pot. Given an amount you as the taker want to bet, you can use the following formula to convert what value you have to use as <code>fillAmount</code> in this endpoint. <code>fillAmount = takerBetAmount * percentageOdds / (10^20 - percentageOdds)</code>
+Note that <code>takerAmounts</code> are from *the perspective of the market maker*. <code>takerAmounts</code> can be thought of as how many tokens the maker(s) will be putting into the pot. Given an amount you as the taker want to bet, you can use the following formula to convert what value you have to use as <code>takerAmount</code> in this endpoint. <code>takerAmount = takerBetAmount * percentageOdds / (10^20 - percentageOdds)</code>
 </aside>
 
 <aside class="notice">
 To convert a <code>fillAmount</code> (what the market maker pays) to what the taker will pay, you can use the formula <code>takerPayAmount = fillAmount * 10^20 / percentageOdds - fillAmount </code>. Intuitively, this is the pot size (<code>fillAmount * 10^20 / percentageOdds)</code> minus what the maker is putting in
 </aside>
+
+### Error Responses
+
+| Error Code                 | Description                                                                  |
+| ---------------------------| ---------------------------------------------------------------------------- |
+| ORDERS_NOT_UNIQUE          | Only unique `orderHashes` should be sent                                     |
+| INCORRECT_ARRAY_LENGTHS    | `orderHashes` and `takerAmounts` arrays are different lengths.               |
+| ORDERS_DONT_EXIST          | One of the orders do not exist                                               |
+| AFTER_ORDER_EXPIRY         | One of the orders have expired                                               |
+| BASE_TOKENS_NOT_SAME       | All orders must be for the same `baseToken`                                  |
+| MARKETS_NOT_SAME           | All orders must be for the same market                                       |
+| DIRECTIONS_NOT_SAME        | All orders must be betting on the same side `isMakerBettingOutcomeOne`       |
+| INVALID_ORDERS             | Order is now inactive                                                        |
+| MATCH_STATE_INVALID        | The fixture for the order is in an invalid state and is not bettable anymore |
+| META_TX_RATE_LIMIT_REACHED | Cannot have more than 10 meta transactions at once                           |
+
+## Approve order fill
+
+<aside class="notice">
+Coming soon! This endpoint will be available for use soon, please follow our Discord #api-changes channel to stay up to date.
+</aside>
+
+```shell
+curl --location --request POST 'https://api.sx.bet/orders/approve' \
+--header 'Content-Type: application/json' \
+--data-raw '{"owner":"0xa3bBFaB3645B2Dd4296cADc451d74574CD47Ba1a","spender":"0x38aef22152BC8965bf0af7Cf53586e4b0C4E9936","tokenAddress":"0x6629Ce1Cf35Cc1329ebB4F63202F3f197b3F050B","value":"100000000000","deadline":"1789692000","signature":"0x09d2603a8c8646221d6972b04a5cdd8b13d6326a267329825567a25a5e63606b07b97c84640bfb3ee4a5053083ce178d9e0c9cbdf1b1dfd519fda0594fae30dc1c"}'
+```
+
+```javascript
+import { signTypedData, SignTypedDataVersion } from "@metamask/eth-sig-util";
+import {
+  BigNumber,
+  constants,
+  Contract,
+  providers,
+  utils,
+  Wallet,
+} from "ethers";
+import { randomBytes } from "ethers/lib/utils";
+import dayjs from "dayjs";
+
+async function approveOrderFill() {
+  const privateKey = process.env.PRIVATE_KEY;
+  const tokenAddress = process.env.TOKEN_ADDRESS;
+
+  // get the following from https://api.sx.bet/metadata
+  const tokenTransferProxyAddress = process.env.TOKEN_TRANSFER_PROXY_ADDRESS;
+  const chainId = process.env.CHAIN_ID; // 4162 in production
+  const domainVersion = process.env.DOMAIN_VERSION;
+
+  const bufferPrivateKey = Buffer.from(privateKey!.substring(2), "hex");
+  const wallet = new Wallet(takerPrivateKey).connect(
+    new providers.JsonRpcProvider(process.env.RPC_URL) // find this under the 'references' section
+  );
+  const approvalAmount = constants.MaxUint256;
+  const tokenContract = new Contract(
+    tokenAddress,
+    [
+      {
+        constant: false,
+        inputs: [
+          { internalType: "address", name: "usr", type: "address" },
+          { internalType: "uint256", name: "wad", type: "uint256" },
+        ],
+        name: "approve",
+        outputs: [{ internalType: "bool", name: "", type: "bool" }],
+        payable: false,
+        stateMutability: "nonpayable",
+        type: "function",
+      },
+      {
+        inputs: [
+          {
+            internalType: "address",
+            name: "owner",
+            type: "address",
+          },
+        ],
+        name: "nonces",
+        outputs: [
+          {
+            internalType: "uint256",
+            name: "",
+            type: "uint256",
+          },
+        ],
+        stateMutability: "view",
+        type: "function",
+        constant: true,
+      },
+      {
+        inputs: [],
+        name: "name",
+        outputs: [
+          {
+            internalType: "string",
+            name: "",
+            type: "string"
+          }
+        ],
+        stateMutability: "view",
+        type: "function",
+        constant: true
+      }
+    ],
+    wallet
+  );
+
+  const nonce: BigNumber = await tokenContract.nonces(wallet.address);
+  const tokenName: string = await tokenContract.name();
+
+  const eRC20PermitEip712SignaturePayload = {
+    types: {
+      EIP712Domain: [
+        { name: "name", type: "string" },
+        { name: "version", type: "string" },
+        { name: "chainId", type: "uint256" },
+        { name: "verifyingContract", type: "address" },
+      ],
+      Permit: [
+        { name: "owner", type: "address" },
+        { name: "spender", type: "address" },
+        { name: "value", type: "uint256" },
+        { name: "nonce", type: "uint256" },
+        { name: "deadline", type: "uint256" },
+      ],
+    },
+    domain: {
+      name: tokenName,
+      version: "1",
+      chainId: chainId,
+      verifyingContract: tokenAddress,
+    },
+    message: {
+      owner: wallet.address,
+      spender: tokenTransferProxyAddress,
+      value: approvalAmount.toString(),
+      nonce: nonce.toNumber(),
+      deadline: dayjs().add(2, "hour").unix(),
+    },
+    primaryType: "Permit",
+  };
+  
+
+  const approveProxySignature = signTypedData({
+    privateKey: bufferPrivateKey,
+    data: eRC20PermitEip712SignaturePayload,
+    version: SignTypedDataVersion.V4,
+  });
+
+  const apiPayload = {
+    owner: wallet.address,
+    spender: tokenTransferProxyAddress,
+    tokenAddress,
+    value: approvalAmount.toString(),
+    signature: approveProxySignature,
+  };
+
+  const response = await fetch(`https://api.sx.bet/orders/approve`, {
+    method: "POST",
+    body: JSON.stringify(apiPayload),
+    headers: { "Content-Type": "application/json" },
+  });
+}
+```
+
+> The above command returns json structured like this where `hash` is the transaction hash of the approve transaction. A null value of `hash` means the taker address already has an allowance set for the token of the amount specified in `value`.
+
+```json
+{
+  "status": "success",
+  "data": {
+    "hash": "0x840763ae29b7a6adfa0e315afa47be30cdebd5b793d179dc07dc8fc4f0034965"
+  }
+}
+```
+
+This endpoint approves the specified `value` to be spent by `spender` on behalf of `owner` for token transfers that occur as part of the [Filling orders v2](#filling-orders-v2) flow according to Ethereum's [EIP-2612](https://eips.ethereum.org/EIPS/eip-2612) Permit Extension.  Note that `deadline` field here is only used during signature verification and that the `value` set will be the spender's allowance until changed or revoked. 
+
+### HTTP Request
+
+`POST https://api.sx.bet/orders/approve`
+
+### Request payload parameters
+
+| Name                | Required | Type                    | Description                                                                                                                                                                                                                                                 |
+| ------------------- | -------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| owner              | true     | string                  | Address of the taker granting approval to TokenTransferProxy for filling orders on their behalf                                                                                                                                                           |
+| spender             | true     | string                  | The address of the account which will be able to spend token amounts on behalf of the owner. In this case, the spender should be TokenTransferProxy address                                                                                                                                                             |
+| tokenAddress            | true     | string                  | The token address to grant approval for                                                                                                                                             |
+| value              | true     | string                  | The token amount to grant approval for, in Ethereum units                                                                                                                                                       |
+| dealdine                | true     | string                  | The deadline as a UNIX timestamp format used in signature verification                                                                                                                                                        |
+| signature            | true     | string                  | The generated EIP712 signature on the payload. See the example of how to compute this.                                                                                                                                                                 |
+
+## Filling orders v2
+
+<aside class="notice">
+Coming soon! This endpoint will be available for use soon, please follow our Discord #api-changes channel to stay up to date.
+</aside>
+
+```shell
+curl --location --request POST 'https://api.sx.bet/orders/fill/v2' \
+--header 'Content-Type: application/json' \
+--data-raw '{"taker":"0xa3bBFaB3645B2Dd4296cADc451d74574CD47Ba1a","baseToken":"0x6629Ce1Cf35Cc1329ebB4F63202F3f197b3F050B","isTakerBettingOutcomeOne":true,"stakeWei":"5000000","desiredOdds":"83000000000000000000","oddsSlippage":5,"takerSig":"0x09d2603a8c8646221d6972b04a5cdd8b13d6326a267329825567a25a5e63606b07b97c84640bfb3ee4a5053083ce178d9e0c9cbdf1b1dfd519fda0594fae30dc1c","fillSalt":"69231297238279245345865414293427982207908612843136003245427437324972455931243"}'
+```
+
+```javascript
+import { signTypedData, SignTypedDataVersion } from "@metamask/eth-sig-util";
+import {
+  BigNumber,
+  constants,
+  Contract,
+  providers,
+  utils,
+  Wallet,
+} from "ethers";
+import { randomBytes } from "ethers/lib/utils";
+import dayjs from "dayjs";
+
+async function fillOrder() {
+  const privateKey = process.env.PRIVATE_KEY;
+  const takerAddress = process.env.TAKER_ADDRESS;
+
+  // get the following from https://api.sx.bet/metadata
+  const tokenTransferProxyAddress = process.env.TOKEN_TRANSFER_PROXY_ADDRESS;
+  const EIP712FillHasherAddress = process.env.EIP712_FILL_HASHER_ADDRESS;
+  const chainId = process.env.CHAIN_ID; // 4162 in production
+  const domainVersion = process.env.DOMAIN_VERSION;
+
+  const bufferPrivateKey = Buffer.from(privateKey!.substring(2), "hex");
+  const wallet = new Wallet(privateKey).connect(
+    new providers.JsonRpcProvider(process.env.RPC_URL) // find this under the 'references' section
+  );
+  const stakeWei = "50000000"; // 50 USDC
+  const marketHash = "0x0246b760b06009ece42d08e706563de1967e7f1b4799d0f559244e3f80bbc496"; // Liverpool vs Arsenal
+  const baseToken = "0x6629Ce1Cf35Cc1329ebB4F63202F3f197b3F050B"; // USDC
+  const desiredOdds = "83000000000000000000"; // ~1.20 decimal odds
+  const oddsSlippage = 5; // 5% slippage, so worst decimal odds ~1.14
+  const isTakerBettingOutcomeOne = true // taker is betting that team 1 wins
+  const fillSalt = BigNumber.from(randomBytes(32)).toString();
+
+  const signingPayload = {
+    types: {
+      EIP712Domain: [
+        { name: "name", type: "string" },
+        { name: "version", type: "string" },
+        { name: "chainId", type: "uint256" },
+        { name: "verifyingContract", type: "address" },
+      ],
+      Details: [
+        { name: "action", type: "string" },
+        { name: "market", type: "string" },
+        { name: "betting", type: "string" },
+        { name: "stake", type: "string" },
+        { name: "worstOdds", type: "string" },
+        { name: "worstReturning", type: "string" },
+        { name: "fills", type: "FillObject" },
+      ],
+      FillObject: [
+        { name: "stakeWei", type: "string" },
+        { name: "marketHash", type: "string" },
+        { name: "baseToken", type: "string" },
+        { name: "desiredOdds", type: "string" },
+        { name: "oddsSlippage", type: "uint256" },
+        { name: "isTakerBettingOutcomeOne", type: "bool" },
+        { name: "fillSalt", type: "uint256" },
+        { name: "beneficiary", type: "address" },
+        { name: "beneficiaryType", type: "uint8" },
+        { name: "cashOutTarget", type: "bytes32" },
+      ],
+    },
+    primaryType: "Details",
+    domain: {
+      name: "SX Bet",
+      "6.0",
+      chainId,
+      EIP712FillHasherAddress,
+    },
+    message: {
+      action: "N/A",
+      betting: "N/A",
+      stake: "N/A",
+      worstOdds: "N/A",
+      worstReturning: "N/A",
+      market: marketHash
+      fills: {
+        stakeWei,
+        marketHash,
+        baseToken,
+        desiredOdds,
+        oddsSlippage,
+        isTakerBettingOutcomeOne,
+        fillSalt,
+        beneficiary: constants.AddressZero,
+        beneficiaryType: 0,
+        cashOutTarget: constants.HashZero,
+      },
+    },
+  };
+
+  const signature = signTypedData({
+    privateKey: bufferPrivateKey,
+    data: signingPayload,
+    version: SignTypedDataVersion.V4,
+  });
+
+  const apiPayload = {
+    market: marketHash,
+    baseToken,
+    isTakerBettingOutcomeOne,
+    stakeWei,
+    desiredOdds,
+    oddsSlippage,
+    taker: takerAddress,
+    takerSig: signature,
+    fillSalt,
+  };
+
+  const response = await fetch(`https://api.sx.bet/orders/fill/v2`, {
+    method: "POST",
+    body: JSON.stringify(apiPayload),
+    headers: { "Content-Type": "application/json" },
+  });
+}
+```
+
+> The above command returns json structured like this
+
+```json
+{
+  "status": "success",
+  "data": {
+    "fillHash": "0x840763ae29b7a6adfa0e315afa47be30cdebd5b793d179dc07dc8fc4f0034965",
+    "isPartialFill": false,
+    "totalFilled": "50000000",
+    "averageOdds": "73000000000000000000" 
+  }
+}
+```
+
+This endpoint fills orders on the exchange based on the specified desiredOdds and oddsSlippage. Unlike the legacy [Filling orders v1](#filling-orders-v1) which considers orderHashes and takerAmounts based on an initial call to fetch orders, order matching is done internally <i>after</i> the built-in betting delay, optimizing the taker experience particularly during in-play betting. Furthermore, if any new orders with better odds are added during the betting delay window, those orders will be filled. Lastly, if there isn't sufficient size to support the full stake amount, taker fills will be partially filled so they can carry out a subsequent fill.
+
+See below for the betting delays by sport which are added to guard against toxic flow and high spikes in latency from the bookmaker's side. It is effectively protection for the bookmaker. As order matching is done after the betting delay, errors observed in the past due to order cancellations within the betting delay will now be avoided.
+
+**PREGAME**
+
+| Sport                | Delay ( in seconds ) |
+| -------------------- | -------------------- |
+| Default (all sports) | 0.5                  |
+
+**LIVE**
+
+| Sport               | Delay ( in seconds ) |
+| ------------------- | -------------------- |
+| Baseball            | 12                   |
+| Football            | 10                   |
+| Tennis              | 10                   |
+| Soccer              | 10                   |
+| Basketball          | 8                    |
+| Hockey              | 8                    |
+| Default (all other) | 8                    |
+
+To fill orders on sx.bet via the API, make sure you first enable betting by following the steps [here](#enabling-betting)
+
+<aside class="notice">
+Your assets must be on SX Network to place bets.
+</aside>
+
+### HTTP Request
+
+`POST https://api.sx.bet/orders/fill/v2`
+
+### Request payload parameters
+
+| Name                | Required | Type                    | Description                                                                                                                                                                                                                                                 |
+| ------------------- | -------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| market              | true     | string                  | User facing string for what market the user is betting on. Can simply set to "N/A" when using the API                                                                                                                                                       |
+| baseToken              | true     | string                 | The address of the ERC-20 token representing the currency of the fill  |
+| isTakerBettingOutcomeOne              | true     | boolean                 | Whether or not taker is betting outcome 1 (team 1 wins), if false then taker is betting outcome 2 (team 2 wins) |
+| stakeWei              | true     | string                  | The stake amount for this bet in wei units - see [Unit Conversion](#unit-conversion) |
+| desiredOdds                | true     | string                  | The best odds for filling, used as an anchor when applying oddsSlippage - note that any odds better than the desiredOdds can still fill if found at the time of order matching                 |
+| oddsSlippage                | true     | integer                  | An integer between 0-100 representing the percentage of tolerance that is acceptable based on desiredOdds |
+| fillSalt            | true     | string                  | Random 32 byte string to identify this fill. Must be the same `fillSalt` used when computing the EIP712 payload                                                                                                                                             |
+| taker               | true     | string                  | Address of the taker taking the bet                                                                                                                                                                                                                         |
+| takerSig            | true     | string                  | The EIP712 signature of the `taker` on the payload. See the example of how to compute this.                                                                                                                                                                 |
+| message             | true     | string                  | A user-facing message for the eip712 signing. Can be anything.                                                                                                                                                                                              |
+### Response format
+
+| Name       | Type   | Description                                            |
+| ---------- | ------ | ------------------------------------------------------ |
+| status     | string | `success` or `failure` if the request succeeded or not |
+| data       | object | The response data                                      |
+| fillHash | string | A unique identifier for this fill.                     |
+| isPartialFill | boolean | Whether or not the entire stake was satisfied by this fill         |
+| totalFilled | string | The total amount filled (in wei), useful for determining how much to fill for subsequent bet |
+| averageOdds | string | The average odds of the total amount filled          |
+
+### Error Responses
+
+| Error Code                 | Description                                                                  |
+| ---------------------------| ---------------------------------------------------------------------------- |
+| INSUFFICIENT_KYC           | The taker has not met the minimum kyc level to fill                          |
+| AFTER_ORDER_EXPIRY         | One of the orders have expired                                               |
+| BASE_TOKENS_NOT_SAME       | All orders must be for the same `baseToken`                                  |
+| MARKETS_NOT_SAME           | All orders must be for the same market                                       |
+| DIRECTIONS_NOT_SAME        | All orders must be betting on the same side `isMakerBettingOutcomeOne`       |
+| INVALID_ORDERS             | Order is now inactive                                                        |
+| INVALID_ODDS               | Invalid desiredOdds, must be less than 10^20                                 |
+| INVALID_ODDS_SLIPPAGE      | Invalid oddsSlippage, must be an integer between 0-100                       |
+| MATCH_STATE_INVALID        | The fixture for the order is in an invalid state and is not bettable anymore |
+| TAKER_SIGNATURE_MISMATCH   | The taker signature generated for the request is invalid                     |
+| PROXY_ACCOUNT_INVALID      | The proxy account is invalid (only applicable if proxyTaker was specified in request) |
+| TAKER_AMOUNT_TOO_LOW       | The stakeWei specified is too low for the current token                      |
+| META_TX_RATE_LIMIT_REACHED | Cannot have more than 10 meta transactions at once                           |
+| INSUFFICIENT_SPACE         | There is not enough space to fill the matched orders due to other pending fills  |
+| FILL_ALREADY_SUBMITTED     | The fill has already been submitted                                          |
+| ODDS_STALE                 | No orders could not be found for the desiredOdds and oddsSlippage, try again with greater oddsSlippage |
+
