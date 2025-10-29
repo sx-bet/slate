@@ -7,7 +7,6 @@ Every token in Ethereum has an associated "decimals" value. This effectively spe
 | Token | SX Network Address                            | Decimals |
 | ----- | --------------------------------------------- | -------- |
 | USDC  | See `https://api.sx.bet/metadata` for address | 6        |
-| WETH  | See `https://api.sx.bet/metadata` for address | 18       |
 | WSX  | See `https://api.sx.bet/metadata` for address | 18       |
 
 To convert from nominal units (such as 100 USDC) to Ethereum units which are used in the API, you can do the following.

@@ -5,24 +5,28 @@ toc_footers:
 title: API Reference
 
 language_tabs: # must be one of https://git.io/vQNgJ
-  - shell
-  - javascript
+  # - shell
+  # - javascript
 
 includes:
+  - capitalefficiencyupgrades
+  - references
+  - testnet
+  - metadata
+  - websocket
   - apiKey
-  - markets
-  - parlaymarkets
+  - heartbeat
   - leagues
   - sports
   - fixtures
-  - trades
   - livescores
-  - metadata
+  - markets
+  - parlaymarkets
+  - trades
   - orders
   - unitconversion
   - eip712signing
   - fees
-  - websocket
 
 search: true
 
@@ -37,19 +41,9 @@ meta:
 
 Be your own bookmaker or fill orders programmatically with the SX.bet API!
 
-Technical questions or need support? [Send us an e-mail](mailto:api-support@sx.bet). 
+Technical questions or need support? [Join our discord](https://discord.gg/Ry8yjAD5YG). 
 
-We support betting in USDC, WETH, and WSX
-
-DEPRECATED: If you wish to use our wrapper for javascript you can do so [here](https://github.com/sportx-bet/sportx-js)
-
-| Token | SX Network Address                           |
-| ----- | -------------------------------------------- |
-| USDC  | `0xe2aa35C2039Bd0Ff196A6Ef99523CC0D3972ae3e` |
-| WETH  | `0xA173954Cc4b1810C0dBdb007522ADbC182DaB380` |
-| WSX   | `0xaa99bE3356a11eE92c3f099BD7a038399633566f` |
-
-Explorer available [here](https://explorer.sx.technology) 
+**All documentation is provided in JavaScript.**
 
 <aside class="notice">
 All ETH addresses used in this API are in check-summed format. If you pass in lowercase-only addresses, you won't get results.

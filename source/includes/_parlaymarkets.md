@@ -1,6 +1,6 @@
 # Parlay Markets
 
-Bettors can request a custom parlay on [SX.Bet](https://sx.bet) by selecting multiple markets. When they submit a parlay request, a message is sent via Websocket (See [this link](#parlay-market-requests) for more details on the request). Once this message is sent, the web client will wait one second to allow market makers to submit orders for the parlay market.
+Bettors can request a custom parlay on [SX.Bet](https://sx.bet) by selecting multiple markets. When they submit a parlay request, a message is sent via Websocket (See [this link](#parlay-market-requests) for more details on the request). Once this message is sent, makers will be able to submit orders to this market for upto three seconds.
 
 Market makers can use the payload data from the Parlay Request to submit an [order](#post-a-new-order). Market makers have a three second window to post orders. After this point, bettors will be shown all available orders at the same time and no other orders will be viewable by the bettor.
 
